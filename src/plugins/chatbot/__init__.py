@@ -1,6 +1,7 @@
+from random import randint
+
 from nonebot import logger, on_message, on_command
-from nonebot.adapters.onebot.v11 import MessageEvent
-from nonebot.adapters import Message
+from nonebot.adapters.onebot.v11 import MessageEvent, Message
 from nonebot.params import CommandArg
 from nonebot.rule import to_me
 from nonebot.plugin import PluginMetadata
@@ -56,6 +57,15 @@ async def chat_bot(event: MessageEvent):
 
     msg_qq = event.get_message().extract_plain_text().strip()  # 获取消息纯文本内容，不包含CQ码
     msg_result = None
+
+    if not msg_qq:
+        face_id = randint(0, 222)
+        mes = Message(f"[CQ:face,id={face_id}]")
+        if randint(0, 10) > 4:
+            mes.append(f" [CQ:face,id={face_id}]")
+        if randint(0, 10) > 6:
+            mes.append(f" [CQ:face,id={face_id}]")
+        await on_msg.finish(mes)
 
     # ChatGPT 官方 API
     if chat_bot_type == 0:
@@ -202,16 +212,18 @@ async def bing_command(event: MessageEvent, msg_args: Message = CommandArg()):
     elif args[0] == "restart" or args[0] == "重启":
         try:
             restart_server()
+            clear_msg()
+            await cmd_bing.finish("已重启服务")
         except Exception as e:
             logger.error(e)
             await cmd_bing.finish('重启失败')
-            return
+            # return
 
-        if len(args) > 1:
-            await ask_bing(get_user_id(event), "reset")
-            await cmd_bing.finish(await ask_bing(get_user_id(event), args[1]))
-        else:
-            await cmd_bing.finish("已重启服务")
+        # if len(args) > 1:
+        #     await ask_bing(get_user_id(event), "reset")
+        #     await cmd_bing.finish(await ask_bing(get_user_id(event), args[1]))
+        # else:
+        #     await cmd_bing.finish("已重启服务")
 
     elif args[0] == "source" or args[0] == "参考来源":
         if len(args) < 2:

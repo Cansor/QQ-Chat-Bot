@@ -27,12 +27,18 @@ chatbot [args]...
 
 
 bing [args]...
-该命令仅用于 NewBing API (chatbot api 2)
+# 该命令仅用于 NewBing API (chatbot api 2)
 
 - [jailbreak | 越狱] [on|off | 启用|禁用]    启用或禁用越狱模式
 - restart | 重启    重启 node-chat-api 服务
 - [source | 参考来源] [on|off | 启用|禁用]    启用或禁用在消息末尾添加参考来源
+
+
+另外，在 NewBing API 下，可以直接发送以下文字来达到相应效果（这不属于命令）：
+- 发送 sudo 或 reset 来重置对话。
+- 发送 msg 来查询当前的聊天记录数量。
 ```
+
 
 global_setting 插件
 ```

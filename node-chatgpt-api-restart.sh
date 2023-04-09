@@ -8,8 +8,9 @@ then
     echo "pid is empty"
 else
     kill -9 $pid
-    echo "kill"
+    echo "killing..."
     sleep 3
 fi
+echo "starting..."
 nohup npm start >./bing-api-server.log 2>&1 &
 echo "ok!"

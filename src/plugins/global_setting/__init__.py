@@ -24,7 +24,7 @@ plugin_config: Config = Config.parse_obj(get_driver().config)
 async def hook_send(bot: Bot, api: str, data: Dict[str, Any]):
     """消息钩子函数，在消息发送前执行"""
 
-    # 如果是群消息 且 启用了 at发送者，则在消息前添加 at
+    # 如果是群消息 且 启用了 at用户，则在消息前添加 at
     if data.get("message_type") == "group" and plugin_config.at_sender:
         data.get("message").insert(0, MessageSegment.at(data.get("user_id")))
 

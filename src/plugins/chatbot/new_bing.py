@@ -1,4 +1,4 @@
-from nonebot import get_driver
+from nonebot import get_driver, logger
 import subprocess
 import requests
 from time import sleep
@@ -69,9 +69,10 @@ async def ask_bing(user_id: int, prompt: str) -> str:
         try:
             response = requests.post(Config.url, json=user.message)
             break
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
             sleep(1)
             count += 1
+            logger.error(e)
 
     if not response:
         return "Response is null"
@@ -84,12 +85,6 @@ async def ask_bing(user_id: int, prompt: str) -> str:
     if result.get("error"):
         return f"%s: %s" % (result.get("name"), result.get("message"))
 
-    # 提问+响应
-    user.msg_count += 2
-
-    # 消息正文
-    res_str = result.get("response")
-
     user.message["conversationId"] = result.get("conversationId")
 
     if user.jailbreak:
@@ -101,6 +96,9 @@ async def ask_bing(user_id: int, prompt: str) -> str:
         user.message["invocationId"] = result.get("invocationId")
         user.message["clientId"] = result.get("clientId")
 
+    # 消息正文
+    res_str = result.get("response")
+
     if user.sourceAttributions:
         # 在消息中加上参考来源
         source_attributions = result.get("details").get("sourceAttributions")
@@ -111,6 +109,9 @@ async def ask_bing(user_id: int, prompt: str) -> str:
                 res_str += "\n%d. [%s] %s" % (index, source.get("providerDisplayName"), source.get("seeMoreUrl"))
                 index += 1
 
+    # 提问+响应
+    user.msg_count += 2
+    
     return res_str
 
 
@@ -119,8 +120,12 @@ def reset_msg(user: User):
 
     user.msg_count = 0
     user.message = {"jailbreakConversationId": user.jailbreak}
-    # if user.jailbreak:
-    #     user.message["systemMessage"] = Config.systemMessage
+
+
+def clear_msg():
+    """清空所有会话消息"""
+
+    session_store.clear()
 
 
 def restart_server():
@@ -144,5 +149,6 @@ __all__ = [
     'ask_bing',
     'switch_jailbreak',
     'restart_server',
+    'clear_msg',
     'switch_source_attributions'
 ]
