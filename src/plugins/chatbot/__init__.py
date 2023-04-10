@@ -1,4 +1,5 @@
 from random import randint
+from time import sleep
 
 from nonebot import logger, on_message, on_command
 from nonebot.adapters.onebot.v11 import MessageEvent, Message
@@ -18,18 +19,36 @@ __plugin_meta__ = PluginMetadata(
     extra={},
 )
 
-chat_bot_type = 2
 switch_chat = True
 # 群组黑名单
 group_blacklist = []
 # 用户黑名单
 user_blacklist = []
 
+user_chatbot_type: dict[int, int] = dict()
+
 
 def get_user_id(event: MessageEvent) -> int:
     """获取用户ID，一个群视为一个用户"""
 
     return event.__getattribute__("group_id") if event.message_type == "group" else event.user_id
+
+
+def get_qq_face_cq_code() -> str:
+    """随机获取QQ表情的CQ码"""
+
+    # 无效的表情列表
+    t = [
+        139,
+        141, 143, 149,
+        150, 151, 152, 153, 154, 155, 156, 157, 159,
+        160, 161, 162, 163, 164, 165, 166, 167,
+        170, 171
+    ]
+    face_id = randint(0, 247)
+    while face_id in t:
+        face_id = randint(0, 247)
+    return f"[CQ:face,id={face_id}]"
 
 
 async def permission_handler(event: MessageEvent) -> bool:
@@ -55,50 +74,62 @@ on_msg = on_message(rule=to_me(), priority=100, permission=permission_handler)
 async def chat_bot(event: MessageEvent):
     """聊天机器人"""
 
-    msg_qq = event.get_message().extract_plain_text().strip()  # 获取消息纯文本内容，不包含CQ码
-    msg_result = None
+    user_id = get_user_id(event)
+    chat_bot_type = user_chatbot_type.setdefault(user_id, 2)
 
+    msg_qq = event.get_message().extract_plain_text().strip()  # 获取消息纯文本内容，不包含CQ码
+    msg_response = None
+
+    # QQ消息没有纯文本内容时，随机回复QQ表情
     if not msg_qq:
-        face_id = randint(0, 222)
-        mes = Message(f"[CQ:face,id={face_id}]")
-        if randint(0, 10) > 4:
-            mes.append(f" [CQ:face,id={face_id}]")
-        if randint(0, 10) > 6:
-            mes.append(f" [CQ:face,id={face_id}]")
+        cq = get_qq_face_cq_code()
+        mes = Message(cq)
+        if randint(0, 9) > 4:
+            mes.append(cq)
+        if randint(0, 9) > 6:
+            mes.append(cq)
         await on_msg.finish(mes)
+        return
 
     # ChatGPT 官方 API
     if chat_bot_type == 0:
         try:
-            msg_result = await ask_gpt(msg_qq)
+            msg_response = await ask_gpt(user_id, msg_qq)
         except Exception:
             await on_msg.finish("ChatGPT 好像异常了！")
     # ChatGPT 逆向 API
     elif chat_bot_type == 1:
         try:
-            msg_result = await ask_gpt_reverse(msg_qq)
+            msg_response = await ask_gpt_reverse(msg_qq)
         except Exception:
             await on_msg.finish("ChatGPT 好像异常了！")
-    # ChatBing API
+    # NewBing API
     elif chat_bot_type == 2:
         try:
-            msg_result = await ask_bing(get_user_id(event), msg_qq)
+            msg_response = await ask_bing(user_id, msg_qq)
         except Exception:
             await on_msg.finish("Error")
 
     # 发送（回复）QQ消息
-    if msg_result:
-        await on_msg.finish(msg_result)
+    if msg_response:
+        # 群聊 1/10 的概率发送戳一戳
+        if event.message_type == "group" and randint(0, 9) == 6:
+            await on_msg.send(msg_response)
+            sleep(2)
+            await on_msg.finish(Message(f"[CQ:poke,qq={event.user_id}]"))
+        else:
+            await on_msg.finish(msg_response)
     else:
-        logger.info("Result message is None")
+        await on_msg.finish(Message("无响应...[CQ:face,id=34]"))
+        logger.info("Response message is None")
 
 
 cmd_chat = on_command("chatbot", rule=to_me(), priority=10, block=True, permission=super_users_permission)
 
 
 @cmd_chat.handle()
-async def chat_command(msg_args: Message = CommandArg()):
-    global switch_chat, chat_bot_type
+async def chat_command(event: MessageEvent, msg_args: Message = CommandArg()):
+    global switch_chat
 
     args = msg_args.extract_plain_text().strip()
     if not args:
@@ -160,25 +191,27 @@ async def chat_command(msg_args: Message = CommandArg()):
                 return
 
             chat_bot_type = number
+            user_chatbot_type[get_user_id(event)] = chat_bot_type
+
             msg = ''
             if chat_bot_type == 0:
                 msg = 'ChatGPT 官方 API'
             elif chat_bot_type == 1:
                 msg = 'ChatGPT 逆向 API'
             elif chat_bot_type == 2:
-                msg = 'New Bing API'
+                msg = 'NewBing API'
 
             await cmd_chat.finish(f'已切换至：{msg}')
 
     elif args[0] == 'tokens':
-        await cmd_chat.finish(f"ChatGPT的当前上下文tokens：{get_msg_history_tokens()}")
+        await cmd_chat.finish(f"ChatGPT的当前上下文tokens：{get_msg_history_tokens(get_user_id(event))}")
 
     elif args[0] == "delete" or args[0] == "删除记录":
         if len(args) < 2:
             await cmd_chat.finish("无效命令，参数不完整")
         else:
             number = int(args[1])
-            await cmd_chat.finish(f'已清除 {remove_msg_history(number)} 条聊天记录')
+            await cmd_chat.finish(f'已清除 {remove_msg_history(get_user_id(event), number)} 条聊天记录')
 
     else:
         await cmd_chat.finish('没有这个命令')
@@ -213,11 +246,14 @@ async def bing_command(event: MessageEvent, msg_args: Message = CommandArg()):
         try:
             restart_server()
             clear_msg()
-            await cmd_bing.finish("已重启服务")
+            # finish不能放在这个地方，因为finish会抛异常，从而导致被错误地捕获
+            # await cmd_bing.finish("已重启服务")
         except Exception as e:
             logger.error(e)
             await cmd_bing.finish('重启失败')
-            # return
+            return
+
+        await cmd_bing.finish("已重启服务")
 
         # if len(args) > 1:
         #     await ask_bing(get_user_id(event), "reset")

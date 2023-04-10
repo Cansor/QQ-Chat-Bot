@@ -1,7 +1,6 @@
 import openai
 from revChatGPT.V1 import Chatbot
 from nonebot import get_driver
-from os import getenv
 
 
 # ================================================================================
@@ -47,14 +46,14 @@ class MsgHistory:
 if not openai.api_key:
     openai.api_key = get_driver().config.openai_api_key
 
-# 聊天记录
-msg_history = MsgHistory(
-    [{"role": "system", "content": "你是一只可爱的猫娘，知性且受欢迎，你要模仿人类的情感，并在回复后面加上喵~"}],
-    74
-)
+
+session_store: dict[int, MsgHistory] = dict()
 
 
-async def ask_gpt(prompt: str) -> str:
+async def ask_gpt(user_id: int, prompt: str) -> str:
+    msg_history = session_store.setdefault(user_id, MsgHistory(
+            [{"role": "system", "content": "你是一只可爱的猫娘，知性且受欢迎，你要模仿人类的情感，并在回复后面加上喵~"}], 74)
+    )
     # 添加一条聊天记录
     msg_history.add({'role': 'user', 'content': prompt}, 1)
 
@@ -72,12 +71,14 @@ async def ask_gpt(prompt: str) -> str:
     return message.strip()
 
 
-def get_msg_history_tokens() -> int:
-    return msg_history.get_tokens()
+def get_msg_history_tokens(user_id: int) -> int:
+    m = session_store.get(user_id)
+    return m.get_tokens() if m else 0
 
 
-def remove_msg_history(num: int) -> int:
-    return msg_history.remove_msg(num)
+def remove_msg_history(user_id: int, num: int) -> int:
+    m = session_store.get(user_id)
+    return m.remove_msg(num) if m else 0
 
 
 # ================================================================================
@@ -90,6 +91,7 @@ chatbot = Chatbot(config={
     # 会话ID，如果为None，每次重启都会创建新的会话。可以登录 https://chat.openai.com 查看（左侧会话列表）
     conversation_id='484815e9-0647-4f5c-adc5-2f94ba85adb6'
 )
+
 
 async def ask_gpt_reverse(prompt: str) -> str:
     response = None

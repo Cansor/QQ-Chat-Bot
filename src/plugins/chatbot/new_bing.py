@@ -35,7 +35,7 @@ class User:
 session_store: dict[int, User] = dict()
 
 
-async def ask_bing(user_id: int, prompt: str) -> str:
+async def ask_bing(user_id: int, prompt: str) -> str | None:
     user = session_store.setdefault(user_id, User())
 
     # sudo 时重置对话
@@ -75,7 +75,7 @@ async def ask_bing(user_id: int, prompt: str) -> str:
             logger.error(e)
 
     if not response:
-        return "Response is null"
+        return None
 
     # 获取响应的Json内容，是一个字典
     result = response.json()
