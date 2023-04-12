@@ -27,7 +27,7 @@ user_blacklist = []
 
 user_chatbot_type: dict[int, int] = dict()
 
-default_chatbot_type: 2
+default_chatbot_type = 2
 
 
 def get_user_id(event: MessageEvent) -> int:
@@ -216,6 +216,7 @@ cmd_gpt = on_command("chatgpt", rule=to_me(), priority=10, block=True, permissio
 @cmd_gpt.handle()
 async def chatgpt_command(event: MessageEvent, msg_args: Message = CommandArg()):
     """ChatGPT 的一些命令"""
+
     args = msg_args.extract_plain_text().strip()
     if not args:
         await cmd_bing.finish("参数缺失")
