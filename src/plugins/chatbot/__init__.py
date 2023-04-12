@@ -27,6 +27,8 @@ user_blacklist = []
 
 user_chatbot_type: dict[int, int] = dict()
 
+default_chatbot_type: 2
+
 
 def get_user_id(event: MessageEvent) -> int:
     """获取用户ID，一个群视为一个用户"""
@@ -38,7 +40,7 @@ def get_qq_face_cq_code() -> str:
     """随机获取QQ表情的CQ码"""
 
     # 无效的表情列表
-    t = [
+    lose = [
         139,
         141, 143, 149,
         150, 151, 152, 153, 154, 155, 156, 157, 159,
@@ -46,7 +48,7 @@ def get_qq_face_cq_code() -> str:
         170, 171
     ]
     face_id = randint(0, 247)
-    while face_id in t:
+    while face_id in lose:
         face_id = randint(0, 247)
     return f"[CQ:face,id={face_id}]"
 
@@ -75,7 +77,7 @@ async def chat_bot(event: MessageEvent):
     """聊天机器人"""
 
     user_id = get_user_id(event)
-    chat_bot_type = user_chatbot_type.setdefault(user_id, 2)
+    chat_bot_type = user_chatbot_type.setdefault(user_id, default_chatbot_type)
 
     msg_qq = event.get_message().extract_plain_text().strip()  # 获取消息纯文本内容，不包含CQ码
     msg_response = None
@@ -89,7 +91,6 @@ async def chat_bot(event: MessageEvent):
         if randint(0, 9) > 6:
             mes.append(cq)
         await on_msg.finish(mes)
-        return
 
     # ChatGPT 官方 API
     if chat_bot_type == 0:
@@ -112,8 +113,8 @@ async def chat_bot(event: MessageEvent):
 
     # 发送（回复）QQ消息
     if msg_response:
-        # 群聊 1/10 的概率发送戳一戳
-        if event.message_type == "group" and randint(0, 9) == 6:
+        # 群聊 1/12 的概率发送戳一戳
+        if event.message_type == "group" and randint(0, 11) == 6:
             await on_msg.send(msg_response)
             sleep(2)
             await on_msg.finish(Message(f"[CQ:poke,qq={event.user_id}]"))
@@ -124,26 +125,26 @@ async def chat_bot(event: MessageEvent):
         logger.info("Response message is None")
 
 
-cmd_chat = on_command("chatbot", rule=to_me(), priority=10, block=True, permission=super_users_permission)
+cmd_chatbot = on_command("chatbot", rule=to_me(), priority=10, block=True, permission=super_users_permission)
 
 
-@cmd_chat.handle()
-async def chat_command(event: MessageEvent, msg_args: Message = CommandArg()):
+@cmd_chatbot.handle()
+async def chatbot_command(event: MessageEvent, msg_args: Message = CommandArg()):
     global switch_chat
 
     args = msg_args.extract_plain_text().strip()
     if not args:
-        await cmd_chat.finish("参数缺失")
+        await cmd_chatbot.finish("参数缺失")
 
     args = args.lower().split(' ')
 
     if args[0] == 'on' or args[0] == '启用':
         switch_chat = True
-        await cmd_chat.finish(message='ChatBot 已启用')
+        await cmd_chatbot.finish(message='ChatBot 已启用')
 
     elif args[0] == 'off' or args[0] == '禁用':
         switch_chat = False
-        await cmd_chat.finish(message='ChatBot 已禁用')
+        await cmd_chatbot.finish(message='ChatBot 已禁用')
 
     elif args[0] == 'group' or args[0] == '群组':
         # 如果小于两个参数，则查询群组列表，否则继续执行
@@ -152,16 +153,16 @@ async def chat_command(event: MessageEvent, msg_args: Message = CommandArg()):
             for gid in group_blacklist:
                 msg += '%d\n' % gid
 
-            await cmd_chat.finish(msg)
+            await cmd_chatbot.finish(msg)
         else:
             group_id = int(args[1])
             # 有则移除，无则添加
             if group_id in group_blacklist:
                 group_blacklist.remove(group_id)
-                await cmd_chat.finish('已移除群组：%d' % group_id)
+                await cmd_chatbot.finish('已移除群组：%d' % group_id)
             else:
                 group_blacklist.append(group_id)
-                await cmd_chat.finish('已添加群组：%d' % group_id)
+                await cmd_chatbot.finish('已添加群组：%d' % group_id)
 
     elif args[0] == 'blacklist' or args[0] == '黑名单':
         # 如果小于两个参数，则查询黑名单列表，否则继续执行
@@ -170,51 +171,67 @@ async def chat_command(event: MessageEvent, msg_args: Message = CommandArg()):
             for qid in user_blacklist:
                 msg += '%d\n' % qid
 
-            await cmd_chat.finish(msg)
+            await cmd_chatbot.finish(msg)
         else:
             qq_id = int(args[1])
             # 有则移除，无则添加
             if qq_id in user_blacklist:
                 user_blacklist.remove(qq_id)
-                await cmd_chat.finish('已移除黑名单：%d' % qq_id)
+                await cmd_chatbot.finish('已移除黑名单：%d' % qq_id)
             else:
                 user_blacklist.append(qq_id)
-                await cmd_chat.finish('已添加黑名单：%d' % qq_id)
+                await cmd_chatbot.finish('已添加黑名单：%d' % qq_id)
 
     elif args[0] == 'api' or args[0] == '切换':
-        if len(args) < 2:
-            await cmd_chat.finish("无效命令，参数不完整")
-        else:
-            number = int(args[1])
-            if number > 2:
-                await cmd_chat.finish("参数无效")
-                return
+        args_len = len(args)
 
-            chat_bot_type = number
-            user_chatbot_type[get_user_id(event)] = chat_bot_type
+        if args_len < 2:
+            cmd_gpt.finish("命令无效，参数不完整")
 
-            msg = ''
-            if chat_bot_type == 0:
-                msg = 'ChatGPT 官方 API'
-            elif chat_bot_type == 1:
-                msg = 'ChatGPT 逆向 API'
-            elif chat_bot_type == 2:
-                msg = 'NewBing API'
+        chat_bot_type = int(args[1]) if int(args[1]) in (0, 1, 2) else 2
+        msg = None
 
-            await cmd_chat.finish(f'已切换至：{msg}')
+        if chat_bot_type == 0:
+            msg = 'ChatGPT 官方 API'
+        elif chat_bot_type == 1:
+            msg = 'ChatGPT 逆向 API'
+        elif chat_bot_type == 2:
+            msg = 'NewBing API'
 
-    elif args[0] == 'tokens':
-        await cmd_chat.finish(f"ChatGPT的当前上下文tokens：{get_msg_history_tokens(get_user_id(event))}")
+        user_chatbot_type[get_user_id(event)] = chat_bot_type
+        if args_len > 2 and (args[2] == "all" or args[2] == "全部"):
+            for key in user_chatbot_type.keys():
+                user_chatbot_type[key] = chat_bot_type
+            await cmd_chatbot.finish(f'全部用户已切换至：{msg}\n*仅已存在的用户')
 
-    elif args[0] == "delete" or args[0] == "删除记录":
-        if len(args) < 2:
-            await cmd_chat.finish("无效命令，参数不完整")
-        else:
-            number = int(args[1])
-            await cmd_chat.finish(f'已清除 {remove_msg_history(get_user_id(event), number)} 条聊天记录')
+        await cmd_chatbot.finish(f'已切换至：{msg}')
 
     else:
-        await cmd_chat.finish('没有这个命令')
+        await cmd_chatbot.finish('没有这个命令')
+
+
+cmd_gpt = on_command("chatgpt", rule=to_me(), priority=10, block=True, permission=permission_handler)
+
+
+@cmd_gpt.handle()
+async def chatgpt_command(event: MessageEvent, msg_args: Message = CommandArg()):
+    """ChatGPT 的一些命令"""
+    args = msg_args.extract_plain_text().strip()
+    if not args:
+        await cmd_bing.finish("参数缺失")
+
+    args = args.strip().split(' ')
+
+    if args[0] == 'tokens':
+        await cmd_gpt.finish(f"ChatGPT的当前上下文tokens：{get_msg_history_tokens(get_user_id(event))}")
+    elif args[0] == "delete" or args[0] == "删除记录":
+        if len(args) < 2:
+            await cmd_gpt.finish("无效命令，参数不完整")
+        else:
+            number = int(args[1])
+            await cmd_gpt.finish(f'已清除 {remove_msg_history(get_user_id(event), number)} 条聊天记录')
+    else:
+        await cmd_gpt.finish('没有这个命令')
 
 
 cmd_bing = on_command("bing", rule=to_me(), priority=10, block=True, permission=permission_handler)
@@ -251,7 +268,6 @@ async def bing_command(event: MessageEvent, msg_args: Message = CommandArg()):
         except Exception as e:
             logger.error(e)
             await cmd_bing.finish('重启失败')
-            return
 
         await cmd_bing.finish("已重启服务")
 

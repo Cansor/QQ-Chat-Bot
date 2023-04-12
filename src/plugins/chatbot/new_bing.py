@@ -64,8 +64,8 @@ async def ask_bing(user_id: int, prompt: str) -> str | None:
     count = 0
     response = None
 
-    # 网络连接异常时，将重试 3 次重连
-    while count < 3:
+    # 网络连接异常时，将重试 5 次重连
+    while count < 5:
         try:
             response = requests.post(Config.url, json=user.message)
             break
