@@ -1,6 +1,6 @@
 [project]
 name = "qq_bot"
-version = "1.3.1"
+version = "1.4.0"
 description = "qq_bot"
 readme = "README.md"
 requires-python = ">=3.9, <4.0"

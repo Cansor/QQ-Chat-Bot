@@ -6,10 +6,17 @@
 - [go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
 - [node-chat-api](https://github.com/waylaidwanderer/node-chatgpt-api) (BingAI服务端)
 
-### 配置
-对于 ChatGPT，需要把Key添加到 .evn 配置文件中或者系统环境变量中（根据[NoneBot2文档](https://v2.nonebot.dev/docs/appendices/config#系统环境变量)，同名环境变量会覆盖.env文件中的配置）。
+*2023-04-15 已删除ChatGPT逆向API（revChatGPT）*
 
-### 两个插件的命令：
+### 配置
+
+对于 ChatGPT，需要把Key添加到 .env 配置文件中或者系统环境变量中（根据[NoneBot2文档](https://v2.nonebot.dev/docs/appendices/config#系统环境变量)，同名环境变量会覆盖.env文件中的配置）。
+
+连接的配置请参考[NoneBot适配器——配置连接](https://onebot.adapters.nonebot.dev/docs/guide/setup#onebot-v11)，监听的IP/主机名和端口号在.env配置文件中配置
+
+node-chat-api服务的访问地址在 .env.dev 或 .env.prod 中配置。
+
+### 插件命令：
 
 chatbot 插件
 ```
@@ -21,17 +28,17 @@ chatbot [args]...
 - [group|群组] [群号]    添加或移除群组黑名单
 - [blacklist|黑名单]    查看用户黑名单
 - [blacklist|黑名单] [QQ号]    添加或移除用户黑名单
-- [api|切换] [0|1|2]    切换API：0-ChatGPT官方API，1-ChatGPT逆向API(revChatGPT)，2-NewBing API(node-chat-api)
+- [api|切换] [0|1]    切换API：0-ChatGPT官方API，1-NewBing API(node-chat-api)
 - [api|切换] [0|1|2] [all|全部]    全部用户切换api (仅已存在的用户)
 
 chatgpt [args]...
-# 该命令仅用于 ChatGPT 官方 API (chatbot api 0)
+# 该命令仅作用于 ChatGPT 官方 API
 
 - tokens    ChatGPT(官方API)的当前上下文tokens（简单粗暴“字符*2”的计算方式）
-- [delete|删除记录] [n]    删除ChatGPT(官方API)最早的 n 条记录
+- [delete|删除记录] [n]    删除ChatGPT最早的 n 条记录
 
 bing [args]...
-# 该命令仅用于 NewBing API (chatbot api 2)
+# 该命令仅作用于 NewBing API
 
 - [jailbreak|越狱] [on|off|启用|禁用]    启用或禁用越狱模式
 - restart|重启    重启 node-chat-api 服务
@@ -73,10 +80,6 @@ OpenAI
 pip install openai
 ```
 
-revChatGPT
-```shell
-pip install --upgrade revChatGPT
-```
 
 ## 启动
 
@@ -90,4 +93,4 @@ pip install --upgrade revChatGPT
 更多信息请参考：
 - [NoneBot2 文档](https://v2.nonebot.dev/)
 - [go-cqhttp 帮助中心](https://docs.go-cqhttp.org/)
-- [revChatGPT](https://github.com/acheong08/ChatGPT)
+- [OpenAI Doc](https://platform.openai.com/docs)

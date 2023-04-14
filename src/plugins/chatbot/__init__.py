@@ -27,7 +27,7 @@ user_blacklist = []
 
 user_chatbot_type: dict[int, int] = dict()
 
-default_chatbot_type = 2
+default_chatbot_type = 1
 
 
 def get_user_id(event: MessageEvent) -> int:
@@ -42,7 +42,7 @@ def get_qq_face_cq_code() -> str:
     # 无效的表情列表
     lose = [
         139,
-        141, 143, 149,
+        141, 142, 143, 149,
         150, 151, 152, 153, 154, 155, 156, 157, 159,
         160, 161, 162, 163, 164, 165, 166, 167,
         170, 171
@@ -58,9 +58,9 @@ async def permission_handler(event: MessageEvent) -> bool:
 
     flag_group = False
     flag_private = False
-    # 是否在群组黑名单中
-    if event.message_type == "group" and (group_id := event.__getattribute__("group_id")):
-        flag_group = group_id not in group_blacklist
+    # 是否不在群组黑名单中
+    if event.message_type == "group":
+        flag_group = event.__getattribute__("group_id") not in group_blacklist
     # 是否是好友私聊
     elif event.message_type == "private" and event.sub_type == "friend":
         flag_private = True
@@ -85,30 +85,33 @@ async def chat_bot(event: MessageEvent):
     # QQ消息没有纯文本内容时，随机回复QQ表情
     if not msg_qq:
         cq = get_qq_face_cq_code()
-        mes = Message(cq)
+        cq_face = Message(cq)
         if randint(0, 9) > 4:
-            mes.append(cq)
+            cq_face.append(cq)
         if randint(0, 9) > 6:
-            mes.append(cq)
-        await on_msg.finish(mes)
+            cq_face.append(cq)
+        await on_msg.finish(cq_face)
 
     # ChatGPT 官方 API
     if chat_bot_type == 0:
         try:
             msg_response = await ask_gpt(user_id, msg_qq)
-        except Exception:
+        except Exception as e:
+            logger.error(e)
             await on_msg.finish("ChatGPT 好像异常了！")
     # ChatGPT 逆向 API
+    # elif chat_bot_type == 1:
+    #     try:
+    #         msg_response = await ask_gpt_reverse(msg_qq)
+    #     except Exception:
+    #         await on_msg.finish("ChatGPT 好像异常了！")
+
+    # NewBing API
     elif chat_bot_type == 1:
         try:
-            msg_response = await ask_gpt_reverse(msg_qq)
-        except Exception:
-            await on_msg.finish("ChatGPT 好像异常了！")
-    # NewBing API
-    elif chat_bot_type == 2:
-        try:
             msg_response = await ask_bing(user_id, msg_qq)
-        except Exception:
+        except Exception as e:
+            logger.error(e)
             await on_msg.finish("Error")
 
     # 发送（回复）QQ消息
@@ -188,14 +191,14 @@ async def chatbot_command(event: MessageEvent, msg_args: Message = CommandArg())
         if args_len < 2:
             cmd_gpt.finish("命令无效，参数不完整")
 
-        chat_bot_type = int(args[1]) if int(args[1]) in (0, 1, 2) else 2
+        chat_bot_type = int(args[1]) if int(args[1]) in (0, 1) else 1
         msg = None
 
         if chat_bot_type == 0:
             msg = 'ChatGPT 官方 API'
+        # elif chat_bot_type == 1:
+        #     msg = 'ChatGPT 逆向 API'
         elif chat_bot_type == 1:
-            msg = 'ChatGPT 逆向 API'
-        elif chat_bot_type == 2:
             msg = 'NewBing API'
 
         user_chatbot_type[get_user_id(event)] = chat_bot_type

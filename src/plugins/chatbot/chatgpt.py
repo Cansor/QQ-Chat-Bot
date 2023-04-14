@@ -1,5 +1,5 @@
 import openai
-from revChatGPT.V1 import Chatbot
+# from revChatGPT.V1 import Chatbot
 from nonebot import get_driver
 
 
@@ -84,25 +84,25 @@ def remove_msg_history(user_id: int, num: int) -> int:
 # ================================================================================
 # 逆向 API
 # ================================================================================
-chatbot = Chatbot(config={
-        # 登录openai账号，然后访问这个地址获取access_token: https://chat.openai.com/api/auth/session
-        'access_token': get_driver().config.openai_access_token
-    },
-    # 会话ID，如果为None，每次重启都会创建新的会话。可以登录 https://chat.openai.com 查看（左侧会话列表）
-    conversation_id='484815e9-0647-4f5c-adc5-2f94ba85adb6'
-)
+# chatbot = Chatbot(config={
+#         # 登录openai账号，然后访问这个地址获取access_token: https://chat.openai.com/api/auth/session
+#         'access_token': get_driver().config.openai_access_token
+#     },
+#     # 会话ID，如果为None，每次重启都会创建新的会话。可以登录 https://chat.openai.com 查看（左侧会话列表）
+#     conversation_id='484815e9-0647-4f5c-adc5-2f94ba85adb6'
+# )
 
 
-async def ask_gpt_reverse(prompt: str) -> str:
-    response = None
-    for data in chatbot.ask(prompt):
-        response = data["message"]
-    return response
+# async def ask_gpt_reverse(prompt: str) -> str:
+#     response = None
+#     for data in chatbot.ask(prompt):
+#         response = data["message"]
+#     return response
 
 
 __all__ = [
     'ask_gpt',
-    'ask_gpt_reverse',
+    # 'ask_gpt_reverse',
     'get_msg_history_tokens',
     'remove_msg_history'
 ]
